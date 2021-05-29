@@ -48,6 +48,35 @@ class Project:
         r = self.repo.remote(remote_name)
         return github_url_owner(r.url)
 
+    def worktrees(self):
+        heads = dict((h.path, h) for h in self.repo.heads)
+        output = self.repo.git.worktree("list", "--porcelain")
+        lines = [l for l in output.splitlines() if len(l) > 0]
+        worktrees = []
+        while lines:
+            [wd, _commit_id, br, *lines] = lines
+            if not wd.startswith('worktree '):
+                raise "expected worktree name"
+            if not br.startswith('branch '):
+                raise "expected branch name"
+            wd = wd[len("worktree "):]
+            br = br[len("branch "):]
+            if br not in heads:
+                continue
+            br = heads[br]
+            worktrees.append(Worktree(self.repo, wd, br))
+        return worktrees
+
+
+class Worktree:
+    def __init__(self, repo, path, branch):
+        self._repo = repo
+        self.path = path
+        self.branch = branch
+
+    def remove(self):
+        self._repo.git.worktree("remove", self.path)
+
 
 class Remote:
     def __init__(self, ref):

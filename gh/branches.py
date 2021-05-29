@@ -12,7 +12,42 @@ ns = namespace("branches")
 
 @ns.command(
         argument("--path", default=os.path.curdir, help='git directory'),
-        argument("--dry", default=False, help="dry run"),
+        argument("--dry", default=False, action='store_true', help="dry run"),
+        argument("remote", default="origin", nargs='?',
+                 help='git remote to delete from'),
+)
+def prune_gone(args):
+    proj = project.open(args.path, remote=args.remote)
+
+    # list of branches the remote tracking branch has been deleted for
+    branches = [h
+             for h in proj.repo.branches
+             if (h.tracking_branch() is not None and
+                 h.tracking_branch() not in proj.repo.references)]
+    worktrees = dict((wd.branch.name, wd) for wd in proj.worktrees())
+    for branch in branches:
+        if branch.name in worktrees:
+            wd = worktrees[branch.name]
+            print(f"remove worktree: {wd.path}")
+            if not args.dry:
+                try:
+                    wd.remove()
+                except Exception as e:
+                    print(f"failed to remove worktree: {e}")
+                    continue
+
+        print(f"delete gone branch: {branch.name}")
+        if not args.dry:
+            try:
+                branch.delete(proj.repo, branch.name, force=True)
+            except Exception as e:
+                print(f"failed to remove branch: {e}")
+
+
+
+@ns.command(
+        argument("--path", default=os.path.curdir, help='git directory'),
+        argument("--dry", default=False, action='store_true', help="dry run"),
         argument("remote", default="origin", nargs='?',
                  help='git remote to delete from'),
 )
