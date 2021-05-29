@@ -12,6 +12,7 @@ ns = namespace("branches")
 
 @ns.command(
         argument("--path", default=os.path.curdir, help='git directory'),
+        argument("--dry", default=False, help="dry run"),
         argument("remote", default="origin", nargs='?',
                  help='git remote to delete from'),
 )
@@ -64,7 +65,9 @@ def prune_merged(args):
 
         if 'local' in info:
             print('delete local branch: {}'.format(name))
-            proj.repo.delete_head(name, force=True)
+            if not args.dry:
+                proj.repo.delete_head(name, force=True)
 
         print('delete remote branch: {}'.format(name))
-        proj.remote.push(refspec=":{}".format(name))
+        if not args.dry:
+            proj.remote.push(refspec=":{}".format(name))
